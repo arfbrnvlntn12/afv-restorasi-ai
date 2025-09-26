@@ -104,7 +104,7 @@ export async function restorePhoto(
   aspectRatio: AspectRatio = 'default'
 ): Promise<string> {
   try {
-    if (!process.env.API_KEY) {
+    if (!process.env.VITE_GEMINI_API_KEY) {
       throw new Error("API Key is not configured. Please set the API_KEY environment variable.");
     }
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
