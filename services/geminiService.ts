@@ -1,12 +1,5 @@
+
 import { GoogleGenAI, Modality } from "@google/genai";
-
-const API_KEY = process.env.GEMINI_API_KEY;
-
-if (!API_KEY) {
-  throw new Error("API_KEY environment variable is not set.");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const BASE_PROMPTS = {
   enhance: `
@@ -65,12 +58,37 @@ const ADDITIVE_PROMPTS = {
   `
 };
 
+const CAMERA_QUALITY_PROMPTS = {
+  'default': '',
+  '4k': `Render the final image with ultra-high definition detail, equivalent to a 4K photograph. Every texture, from skin pores to fabric weave, must be incredibly sharp and clear.`,
+  '8k': `Render the final image with cinematic 8K resolution and photorealism. The level of detail should be breathtaking, capturing microscopic textures and nuances. The output must be indistinguishable from a high-end professional photograph.`
+};
+
+const CAMERA_ANGLE_PROMPTS = {
+  'default': '',
+  'above': `The final image should be rendered as if shot from a high angle, looking down slightly on the subject.`,
+  'eye_level': `The final image should be rendered from an eye-level perspective, creating a direct and personal connection with the subject.`,
+  'below': `The final image should be rendered as if shot from a low angle, looking up at the subject. This should create a sense of scale or importance.`
+};
+
+const ASPECT_RATIO_PROMPTS = {
+  'default': '',
+  '1:1': 'The final image must have a square aspect ratio (1:1).',
+  '3:4': 'The final image must have a vertical portrait aspect ratio (3:4).',
+  '4:5': 'The final image must have a vertical portrait aspect ratio (4:5).',
+  '9:16': 'The final image must have a tall vertical aspect ratio (9:16), suitable for phone screens.',
+  '16:9': 'The final image must have a widescreen landscape aspect ratio (16:9).'
+};
+
 export type BaseRestorationType = keyof typeof BASE_PROMPTS;
 export type AdditiveOptions = {
   passport: boolean;
   full_body: boolean;
   change_clothes: boolean;
 }
+export type CameraQuality = keyof typeof CAMERA_QUALITY_PROMPTS;
+export type CameraAngle = keyof typeof CAMERA_ANGLE_PROMPTS;
+export type AspectRatio = keyof typeof ASPECT_RATIO_PROMPTS;
 
 export async function restorePhoto(
   base64ImageData: string,
@@ -79,9 +97,18 @@ export async function restorePhoto(
   additiveOptions: AdditiveOptions,
   clothingPrompt?: string,
   backgroundPrompt?: string,
-  posePrompt?: string
-): Promise<string | null> {
+  posePrompt?: string,
+  customPrompt?: string,
+  cameraQuality: CameraQuality = 'default',
+  cameraAngle: CameraAngle = 'default',
+  aspectRatio: AspectRatio = 'default'
+): Promise<string> {
   try {
+    if (!process.env.API_KEY) {
+      throw new Error("API Key is not configured. Please set the API_KEY environment variable.");
+    }
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
     let finalPrompt = `
       You will receive a photo to restore. First, perform the primary restoration task defined below. Then, apply any additional tasks that follow.
       
@@ -114,9 +141,30 @@ export async function restorePhoto(
       finalPrompt += ADDITIVE_PROMPTS.change_clothes.replace('[USER_CLOTHING_PROMPT]', clothingPrompt);
     }
     
+    if (customPrompt?.trim()) {
+      finalPrompt += `
+        ---
+        **ADDITIONAL TASK: Custom User Instruction**
+        You must follow this special instruction from the user with high priority: "${customPrompt}". Apply this instruction logically in conjunction with all other tasks.
+      `;
+    }
+    
+    let artisticDirection = '';
+    if (cameraQuality !== 'default') {
+      artisticDirection += CAMERA_QUALITY_PROMPTS[cameraQuality] + ' ';
+    }
+    if (cameraAngle !== 'default') {
+      artisticDirection += CAMERA_ANGLE_PROMPTS[cameraAngle] + ' ';
+    }
+    if (aspectRatio !== 'default') {
+      artisticDirection += ASPECT_RATIO_PROMPTS[aspectRatio];
+    }
+
     finalPrompt += `
       ---
-      **Crucial Final Instruction:** After applying all requested tasks, the final output must be ONLY the processed image itself. Do not add any text, borders, or other artifacts. Preserve the original composition unless explicitly told to crop or change it.
+      **Crucial Final Instruction & Artistic Direction:**
+      ${artisticDirection.trim()}
+      After applying all requested tasks, the final output must be ONLY the processed image itself. Do not add any text, borders, or other artifacts. Preserve the original composition unless explicitly told to crop or change it.
     `;
     
     const response = await ai.models.generateContent({
@@ -139,17 +187,38 @@ export async function restorePhoto(
       },
     });
 
+    if (!response.candidates || response.candidates.length === 0) {
+      const blockReason = response.promptFeedback?.blockReason;
+      let errorMessage = "The request was blocked by the AI model's safety filters.";
+      if (blockReason) {
+        errorMessage += ` Reason: ${blockReason}.`;
+      }
+      throw new Error(errorMessage);
+    }
+
+    let textResponse = '';
     for (const part of response.candidates[0].content.parts) {
       if (part.inlineData) {
         return part.inlineData.data;
       }
+      if (part.text) {
+        textResponse += part.text;
+      }
+    }
+    
+    if (textResponse) {
+      throw new Error(`The model provided a text response instead of an image: "${textResponse}"`);
     }
 
-    return null;
+    throw new Error("The AI model returned a response, but it did not contain an image. Please adjust your prompt or try a different image.");
 
   } catch (error) {
     console.error("Error calling Gemini API:", error);
     if (error instanceof Error) {
+        // Intercept specific auth error to provide a clearer message
+        if (error.message.includes('API key not valid')) {
+            throw new Error('Gemini API Error: API key not valid. Please check your configuration.');
+        }
         throw new Error(`Gemini API Error: ${error.message}`);
     }
     throw new Error("An unknown error occurred during photo restoration.");

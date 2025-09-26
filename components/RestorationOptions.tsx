@@ -1,5 +1,5 @@
 import React from 'react';
-import { BaseRestorationType, AdditiveOptions } from '../services/geminiService';
+import { BaseRestorationType, AdditiveOptions, CameraQuality, CameraAngle, AspectRatio } from '../services/geminiService';
 import { ShirtIcon } from './icons/ShirtIcon';
 
 interface BaseOption {
@@ -27,6 +27,14 @@ interface RestorationOptionsProps {
   onBackgroundPromptChange: (prompt: string) => void;
   posePrompt: string;
   onPosePromptChange: (prompt: string) => void;
+  customPrompt: string;
+  onCustomPromptChange: (prompt: string) => void;
+  cameraQuality: CameraQuality;
+  onCameraQualityChange: (quality: CameraQuality) => void;
+  cameraAngle: CameraAngle;
+  onCameraAngleChange: (angle: CameraAngle) => void;
+  aspectRatio: AspectRatio;
+  onAspectRatioChange: (ratio: AspectRatio) => void;
 }
 
 export const RestorationOptions: React.FC<RestorationOptionsProps> = ({ 
@@ -39,9 +47,23 @@ export const RestorationOptions: React.FC<RestorationOptionsProps> = ({
     backgroundPrompt,
     onBackgroundPromptChange,
     posePrompt,
-    onPosePromptChange
+    onPosePromptChange,
+    customPrompt,
+    onCustomPromptChange,
+    cameraQuality,
+    onCameraQualityChange,
+    cameraAngle,
+    onCameraAngleChange,
+    aspectRatio,
+    onAspectRatioChange,
 }) => {
     const iconClass = "w-8 h-8 mb-2 text-amber-400";
+    const buttonClass = (isSelected: boolean) => 
+        `p-4 rounded-lg border-2 text-center transition-all duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-amber-400 ${
+            isSelected
+            ? 'bg-slate-700/80 border-amber-500 ring-2 ring-amber-500 shadow-lg'
+            : 'bg-slate-800 border-slate-700 hover:border-slate-500'
+        }`;
 
     const handleAdditiveChange = (optionId: keyof AdditiveOptions) => {
         onAdditiveOptionsChange({
@@ -114,96 +136,171 @@ export const RestorationOptions: React.FC<RestorationOptionsProps> = ({
       },
     ];
 
+    const cameraQualityOptions: { id: CameraQuality, label: string }[] = [
+      { id: 'default', label: 'Default' },
+      { id: '4k', label: 'Kualitas 4K' },
+      { id: '8k', label: 'Kualitas 8K' },
+    ];
+
+    const cameraAngleOptions: { id: CameraAngle, label: string }[] = [
+      { id: 'default', label: 'Default' },
+      { id: 'above', label: 'Dari Atas' },
+      { id: 'eye_level', label: 'Tengah' },
+      { id: 'below', label: 'Dari Bawah' },
+    ];
+
+    const aspectRatioOptions: { id: AspectRatio, label: string }[] = [
+        { id: 'default', label: 'Default' },
+        { id: '1:1', label: '1:1' },
+        { id: '3:4', label: '3:4' },
+        { id: '4:5', label: '4:5' },
+        { id: '9:16', label: '9:16' },
+        { id: '16:9', label: '16:9' },
+    ];
+
+
     return (
-        <div className="w-full max-w-5xl my-6">
-            {/* Base Options - Radio Buttons */}
-            <h3 className="text-lg font-semibold text-center text-slate-400 mb-4">Langkah 1: Pilih Jenis Restorasi Dasar</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {baseOptions.map((option) => (
-                    <button
-                        key={option.id}
-                        onClick={() => onBaseOptionChange(option.id)}
-                        className={`p-6 rounded-lg border-2 text-center transition-all duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-amber-400 ${
-                            baseOption === option.id
-                            ? 'bg-slate-700/80 border-amber-500 ring-2 ring-amber-500 shadow-lg'
-                            : 'bg-slate-800 border-slate-700 hover:border-slate-500'
-                        }`}
-                        aria-pressed={baseOption === option.id}
-                    >
-                        <div className="flex justify-center">{option.icon}</div>
-                        <h4 className="font-bold text-lg text-slate-100">{option.title}</h4>
-                        <p className="text-sm text-slate-400 mt-1">{option.description}</p>
-                    </button>
-                ))}
+        <div className="w-full max-w-5xl my-6 space-y-8">
+            {/* Step 1 */}
+            <div>
+                <h3 className="text-lg font-semibold text-center text-slate-400 mb-4">Langkah 1: Pilih Jenis Restorasi Dasar</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {baseOptions.map((option) => (
+                        <button
+                            key={option.id}
+                            onClick={() => onBaseOptionChange(option.id)}
+                            className={buttonClass(baseOption === option.id) + ' p-6'}
+                            aria-pressed={baseOption === option.id}
+                        >
+                            <div className="flex justify-center">{option.icon}</div>
+                            <h4 className="font-bold text-lg text-slate-100">{option.title}</h4>
+                            <p className="text-sm text-slate-400 mt-1">{option.description}</p>
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            {/* Additive Options - Checkboxes */}
-            <h3 className="text-lg font-semibold text-center text-slate-400 mt-8 mb-4">Langkah 2: (Opsional) Tambahkan Fitur</h3>
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {additiveOptionsList.map((option) => (
-                    <button
-                        key={option.id}
-                        onClick={() => handleAdditiveChange(option.id)}
-                        className={`p-6 rounded-lg border-2 text-center transition-all duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-amber-400 ${
-                            additiveOptions[option.id]
-                            ? 'bg-slate-700/80 border-amber-500 ring-2 ring-amber-500 shadow-lg'
-                            : 'bg-slate-800 border-slate-700 hover:border-slate-500'
-                        }`}
-                        aria-pressed={additiveOptions[option.id]}
-                    >
-                        <div className="flex justify-center">{option.icon}</div>
-                        <h4 className="font-bold text-lg text-slate-100">{option.title}</h4>
-                        <p className="text-sm text-slate-400 mt-1">{option.description}</p>
-                    </button>
-                ))}
+            {/* Step 2 */}
+            <div>
+                <h3 className="text-lg font-semibold text-center text-slate-400 mb-4">Langkah 2: (Opsional) Tambahkan Fitur</h3>
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {additiveOptionsList.map((option) => (
+                        <button
+                            key={option.id}
+                            onClick={() => handleAdditiveChange(option.id)}
+                            className={buttonClass(additiveOptions[option.id]) + ' p-6'}
+                            aria-pressed={additiveOptions[option.id]}
+                        >
+                            <div className="flex justify-center">{option.icon}</div>
+                            <h4 className="font-bold text-lg text-slate-100">{option.title}</h4>
+                            <p className="text-sm text-slate-400 mt-1">{option.description}</p>
+                        </button>
+                    ))}
+                </div>
             </div>
-
-            {/* Conditional Inputs */}
-            <div className="mt-6 space-y-4">
-                {additiveOptions.full_body && (
-                     <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
-                        <h4 className="font-semibold text-amber-400 mb-2">Opsi 'Buat Seluruh Badan'</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label htmlFor="pose-prompt" className="block text-sm font-medium text-slate-300 mb-1">Jelaskan Pose (Opsional)</label>
-                                <input 
-                                    type="text"
-                                    id="pose-prompt"
-                                    value={posePrompt}
-                                    onChange={(e) => onPosePromptChange(e.target.value)}
-                                    placeholder="contoh: berdiri dengan tangan di saku"
-                                    className="w-full bg-slate-700 border border-slate-600 rounded-md py-2 px-3 text-slate-200 placeholder-slate-500 focus:ring-amber-500 focus:border-amber-500"
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="background-prompt" className="block text-sm font-medium text-slate-300 mb-1">Jelaskan Latar Belakang (Opsional)</label>
-                                <input 
-                                    type="text"
-                                    id="background-prompt"
-                                    value={backgroundPrompt}
-                                    onChange={(e) => onBackgroundPromptChange(e.target.value)}
-                                    placeholder="contoh: di taman dengan bunga"
-                                    className="w-full bg-slate-700 border border-slate-600 rounded-md py-2 px-3 text-slate-200 placeholder-slate-500 focus:ring-amber-500 focus:border-amber-500"
-                                />
+            
+            {/* Step 3 */}
+            <div>
+                <h3 className="text-lg font-semibold text-center text-slate-400 mb-4">Langkah 3: (Opsional) Sesuaikan Detail</h3>
+                <div className="space-y-4">
+                    {additiveOptions.full_body && (
+                         <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                            <h4 className="font-semibold text-amber-400 mb-2">Opsi 'Buat Seluruh Badan'</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="pose-prompt" className="block text-sm font-medium text-slate-300 mb-1">Jelaskan Pose (Opsional)</label>
+                                    <input 
+                                        type="text"
+                                        id="pose-prompt"
+                                        value={posePrompt}
+                                        onChange={(e) => onPosePromptChange(e.target.value)}
+                                        placeholder="contoh: berdiri dengan tangan di saku"
+                                        className="w-full bg-slate-700 border border-slate-600 rounded-md py-2 px-3 text-slate-200 placeholder-slate-500 focus:ring-amber-500 focus:border-amber-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="background-prompt" className="block text-sm font-medium text-slate-300 mb-1">Jelaskan Latar Belakang (Opsional)</label>
+                                    <input 
+                                        type="text"
+                                        id="background-prompt"
+                                        value={backgroundPrompt}
+                                        onChange={(e) => onBackgroundPromptChange(e.target.value)}
+                                        placeholder="contoh: di taman dengan bunga"
+                                        className="w-full bg-slate-700 border border-slate-600 rounded-md py-2 px-3 text-slate-200 placeholder-slate-500 focus:ring-amber-500 focus:border-amber-500"
+                                    />
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
-                 {additiveOptions.change_clothes && (
+                    )}
+                     {additiveOptions.change_clothes && (
+                        <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                             <label htmlFor="clothing-prompt" className="block text-sm font-medium text-slate-300 mb-1 font-semibold text-amber-400">Jelaskan Pakaian Baru</label>
+                            <input 
+                                type="text"
+                                id="clothing-prompt"
+                                value={clothingPrompt}
+                                onChange={(e) => onClothingPromptChange(e.target.value)}
+                                placeholder="contoh: kemeja batik lengan panjang berwarna biru"
+                                className="w-full bg-slate-700 border border-slate-600 rounded-md py-2 px-3 text-slate-200 placeholder-slate-500 focus:ring-amber-500 focus:border-amber-500"
+                                required
+                            />
+                        </div>
+                    )}
+
                     <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
-                         <label htmlFor="clothing-prompt" className="block text-sm font-medium text-slate-300 mb-1 font-semibold text-amber-400">Jelaskan Pakaian Baru</label>
-                        <input 
-                            type="text"
-                            id="clothing-prompt"
-                            value={clothingPrompt}
-                            onChange={(e) => onClothingPromptChange(e.target.value)}
-                            placeholder="contoh: kemeja batik lengan panjang berwarna biru"
+                         <label htmlFor="custom-prompt" className="block text-sm font-medium text-slate-300 mb-2 font-semibold text-amber-400">
+                            Instruksi Kustom
+                         </label>
+                         <textarea 
+                            id="custom-prompt"
+                            value={customPrompt}
+                            onChange={(e) => onCustomPromptChange(e.target.value)}
+                            placeholder="contoh: ubah warna mata menjadi biru, tambahkan sedikit senyuman"
                             className="w-full bg-slate-700 border border-slate-600 rounded-md py-2 px-3 text-slate-200 placeholder-slate-500 focus:ring-amber-500 focus:border-amber-500"
-                            required
+                            rows={3}
                         />
+                         <p className="text-xs text-slate-500 mt-2">Berikan instruksi tambahan kepada AI. Ini dapat memengaruhi hasil restorasi lainnya.</p>
                     </div>
-                )}
+                </div>
             </div>
+
+             {/* Step 4 */}
+            <div>
+                <h3 className="text-lg font-semibold text-center text-slate-400 mb-4">Langkah 4: Pengaturan Output (Opsional)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                        <h4 className="font-semibold text-amber-400 mb-3 text-center">Kualitas Kamera</h4>
+                        <div className="grid grid-cols-3 gap-2">
+                             {cameraQualityOptions.map(option => (
+                                <button key={option.id} onClick={() => onCameraQualityChange(option.id)} className={buttonClass(cameraQuality === option.id) + ' text-sm'}>
+                                    {option.label}
+                                </button>
+                             ))}
+                        </div>
+                    </div>
+                     <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                        <h4 className="font-semibold text-amber-400 mb-3 text-center">Sudut Kamera</h4>
+                        <div className="grid grid-cols-4 gap-2">
+                             {cameraAngleOptions.map(option => (
+                                <button key={option.id} onClick={() => onCameraAngleChange(option.id)} className={buttonClass(cameraAngle === option.id) + ' text-sm'}>
+                                    {option.label}
+                                </button>
+                             ))}
+                        </div>
+                    </div>
+                    <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                        <h4 className="font-semibold text-amber-400 mb-3 text-center">Rasio Aspek</h4>
+                        <div className="grid grid-cols-3 gap-2">
+                             {aspectRatioOptions.map(option => (
+                                <button key={option.id} onClick={() => onAspectRatioChange(option.id)} className={buttonClass(aspectRatio === option.id) + ' text-sm'}>
+                                    {option.label}
+                                </button>
+                             ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     );
 };
