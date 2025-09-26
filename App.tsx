@@ -1,5 +1,4 @@
-
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { restorePhoto, BaseRestorationType, AdditiveOptions, CameraQuality, CameraAngle, AspectRatio } from './services/geminiService';
 import { Header } from './components/Header';
 import { ImageUploader } from './components/ImageUploader';
@@ -7,11 +6,14 @@ import { ResultsDisplay } from './components/ResultsDisplay';
 import { Loader } from './components/Loader';
 import { SparklesIcon } from './components/icons/SparklesIcon';
 import { RestorationOptions } from './components/RestorationOptions';
+import { ApiKeyInput } from './components/ApiKeyInput';
 import { ImagePreviewModal } from './components/ImagePreviewModal';
 
 type AppState = 'idle' | 'loading' | 'success' | 'error';
 
 export default function App() {
+  const [apiKey, setApiKey] = useState<string>('');
+  const [isApiKeySet, setIsApiKeySet] = useState<boolean>(false);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [restoredImage, setRestoredImage] = useState<string | null>(null);
   const [appState, setAppState] = useState<AppState>('idle');
@@ -33,6 +35,14 @@ export default function App() {
   const [cameraAngle, setCameraAngle] = useState<CameraAngle>('default');
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('default');
 
+  useEffect(() => {
+    const savedKey = localStorage.getItem('gemini_api_key');
+    if (savedKey) {
+      setApiKey(savedKey);
+      setIsApiKeySet(true);
+    }
+  }, []);
+
   const handleImageUpload = useCallback((file: File) => {
     setOriginalFile(file);
     const reader = new FileReader();
@@ -46,7 +56,7 @@ export default function App() {
   }, []);
 
   const handleRestore = async () => {
-    if (!originalImage) return;
+    if (!originalImage || !apiKey) return;
     if (additiveOptions.change_clothes && !clothingPrompt.trim()) {
         setErrorMessage("Please describe the clothing you want to generate.");
         setAppState('error');
@@ -64,6 +74,7 @@ export default function App() {
       const base64Data = originalImage.split(',')[1];
       
       const restoredBase64 = await restorePhoto(
+        apiKey,
         base64Data, 
         mimeType, 
         baseRestorationType, 
@@ -87,7 +98,7 @@ export default function App() {
       console.error(error);
       const message = error instanceof Error ? error.message : "An unknown error occurred.";
       if (message.includes('API key not valid')) {
-        setErrorMessage(`Restorasi gagal: API Key tidak valid atau tidak dikonfigurasi dengan benar.`);
+        setErrorMessage(`Restorasi gagal: API Key tidak valid. Silakan periksa kunci Anda dan coba lagi.`);
       } else {
         setErrorMessage(`Restorasi gagal: ${message}`);
       }
@@ -112,7 +123,23 @@ export default function App() {
     setAspectRatio('default');
   };
 
+  const handleApiKeySubmit = (key: string) => {
+    setApiKey(key);
+    localStorage.setItem('gemini_api_key', key);
+    setIsApiKeySet(true);
+  };
+
+  const handleClearApiKey = () => {
+    setApiKey('');
+    localStorage.removeItem('gemini_api_key');
+    setIsApiKeySet(false);
+  };
+
   const isRestoreDisabled = appState === 'loading' || (additiveOptions.change_clothes && !clothingPrompt.trim());
+
+  if (!isApiKeySet) {
+    return <ApiKeyInput onApiKeySubmit={handleApiKeySubmit} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-200 font-sans flex flex-col items-center p-4 sm:p-6 lg:p-8">
@@ -188,6 +215,12 @@ export default function App() {
       </main>
       <footer className="text-center p-4 text-slate-500 text-sm mt-8">
         <p>Powered by Google's Gemini API. Images are not stored.</p>
+        <button 
+          onClick={handleClearApiKey}
+          className="text-amber-500 hover:text-amber-400 underline mt-2"
+        >
+          Ganti API Key
+        </button>
       </footer>
       <ImagePreviewModal 
         isOpen={isModalOpen}
